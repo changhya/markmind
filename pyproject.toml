@@ -1,0 +1,20 @@
+[project]
+name = "markmind"
+version = "0.1.0"
+description = "PDF -> Markdown -> LLM-wiki synthesis (B2B SaaS)."
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+claude = ["anthropic>=0.40"]
+ollama = ["ollama>=0.3"]
+all = ["anthropic>=0.40", "ollama>=0.3"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
