@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+chromadb
+markitdown
+ollama
+pydantic
+python-multipart
+watchdog
