@@ -1,52 +1,59 @@
-import ollama
-import json
+"""Legacy LLM facade — delegates to the new ``markmind.llm`` package.
 
-def generate_response(prompt: str, model_name: str = "llama3"):
-    """
-    로컬에 설치된 Ollama를 사용하여 응답을 생성합니다.
-    """
-    try:
-        response = ollama.chat(model=model_name, messages=[
-            {
-                'role': 'user',
-                'content': prompt,
-            },
-        ])
-        return response['message']['content']
-    except Exception as e:
-        return f"Ollama Error: {str(e)}\nMake sure Ollama is running locally and the '{model_name}' model is pulled."
+Kept as a thin shim for ONE deprecation cycle so that the existing
+``main.py`` callers (``generate_response`` / ``extract_wiki_pages``) keep
+working unchanged. New code should import from ``markmind.llm`` directly.
 
-def extract_wiki_pages(text_chunk: str, source_name: str, model_name: str = "llama3"):
-    """
-    주어진 텍스트에서 주요 개념을 추출하여 위키 페이지 형태의 JSON 데이터를 반환합니다.
-    """
-    prompt = f"""
-You are an expert knowledge extractor. Analyze the following text and extract key entities, concepts, or topics to create Wiki pages.
-For each key topic, provide a Title, a one-sentence Summary, a list of Tags, and the detailed Content (in Markdown format).
-
-Source Name: {source_name}
-
-Text:
-{text_chunk}
-
-Output strictly in JSON format as a list of objects. Do not include any other text or markdown formatting like ```json.
-Example format:
-[
-  {{
-    "title": "Topic Name",
-    "summary": "A short one-sentence summary.",
-    "tags": ["tag1", "tag2"],
-    "content": "Detailed markdown content..."
-  }}
-]
+See:
+    docs/architecture/ADR-001-llm-provider-abstraction.md
+    docs/architecture/MIGRATION-001-llm-provider.md (PR-B)
 """
+from __future__ import annotations
+
+import warnings
+from typing import Any
+
+from markmind.llm import ProviderName, get_provider
+from markmind.llm.errors import ParseError, ProviderUnavailableError
+
+# Backward-compat default: the legacy code targeted Ollama (llama3).
+_LEGACY_PROVIDER = ProviderName.OLLAMA
+
+
+def generate_response(prompt: str, model_name: str = "llama3") -> str:
+    """Deprecated: use ``markmind.llm.get_provider(...).generate(...)``."""
+    warnings.warn(
+        "backend.ai.llm.generate_response is deprecated; "
+        "use markmind.llm.get_provider().generate() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     try:
-        response = ollama.chat(model=model_name, messages=[
-            {'role': 'user', 'content': prompt}
-        ], format='json')
-        
-        content = response['message']['content']
-        return json.loads(content)
-    except Exception as e:
-        print(f"Extraction Error: {str(e)}")
+        provider = get_provider(_LEGACY_PROVIDER, model=model_name)
+        return provider.generate(prompt)
+    except ProviderUnavailableError as exc:
+        return (
+            f"Ollama Error: {exc}\n"
+            f"Make sure Ollama is running locally and the '{model_name}' model is pulled."
+        )
+
+
+def extract_wiki_pages(
+    text_chunk: str,
+    source_name: str,
+    model_name: str = "llama3",
+) -> list[dict[str, Any]]:
+    """Deprecated: use ``markmind.llm.get_provider(...).extract_wiki_pages(...)``."""
+    warnings.warn(
+        "backend.ai.llm.extract_wiki_pages is deprecated; "
+        "use markmind.llm.get_provider().extract_wiki_pages() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    try:
+        provider = get_provider(_LEGACY_PROVIDER, model=model_name)
+        pages = provider.extract_wiki_pages(text_chunk, source_name=source_name)
+        return [p.model_dump() for p in pages]
+    except (ProviderUnavailableError, ParseError) as exc:
+        print(f"Extraction Error: {exc}")
         return []

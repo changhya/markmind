@@ -3,6 +3,7 @@ uvicorn
 chromadb
 markitdown
 ollama
+anthropic>=0.40
 pydantic
 python-multipart
 watchdog
