@@ -1,232 +1,67 @@
-# 지능형 지식 자산화를 위한 MarkItDown 기반 PDF Markdown 변환 및 LLM-wiki 통합 솔루션 개발 계획
+# MarkMind
 
-현대 기업 환경에서 비정형 데이터의 효율적인 관리는 조직의 핵심 경쟁력으로 부상하고 있으며, 특히 거대언어모델(LLM)의 급격한 발전은 기존의 정적인 문서 관리 체계를 동적이고 상호작용 가능한 지식 기반으로 전환할 것을 요구하고 있다. 대다수의 비즈니스 데이터가 PDF 형식으로 고착화되어 있다는 점을 감안할 때, 이를 기계 학습과 시맨틱 분석이 용이한 Markdown 형식으로 정밀하게 변환하고, 이를 단순한 검색 증강 생성(RAG)의 재료를 넘어선 영속적인 지식 체계인 LLM-wiki 형태로 축적하는 기술적 로드맵의 수립은 필수적인 과제이다.1 본 보고서는 Microsoft의 MarkItDown을 핵심 변환 엔진으로 활용하여 PDF 문서의 구조적 무결성을 확보하고, 안드레 카파시(Andrej Karpathy)가 제안한 LLM-wiki 패러다임을 통해 지식이 스스로 증식하고 정제되는 차세대 지식 관리 시스템의 개발 계획을 상세히 상술한다.
+MarkMind는 로컬 환경에서 구동되는 **지능형 문서 자산화 및 LLM-Wiki 플랫폼**입니다. 사용자가 업로드한 문서(PDF 등)를 분석하여 마크다운(Markdown) 기반의 위키 페이지로 자동 변환·저장하며, RAG(검색 증강 생성) 기술을 통해 축적된 지식과 대화할 수 있는 기능을 제공합니다. 
 
-## 데이터 전처리 엔진으로서의 MarkItDown 아키텍처 분석
+현재 프로토타입은 FastAPI, React, ChromaDB, 그리고 로컬 LLM인 Ollama를 기반으로 동작합니다.
 
-비정형 문서의 구조화 과정에서 가장 큰 장애물은 포맷의 복잡성과 시각적 레이아웃에 가려진 의미적 층위의 단절이다. Microsoft에서 공개한 MarkItDown은 이러한 문제를 해결하기 위해 설계된 경량 Python 유틸리티로, 단순한 텍스트 추출을 넘어 문서의 의미론적 구조를 보존하는 데 최적화되어 있다.3 MarkItDown은 PDF를 포함한 다양한 오피스 파일 포맷을 지원하며, 특히 LLM이 소비하기 가장 효율적인 토큰 구조를 가진 Markdown을 최종 출력물로 지향한다는 점에서 본 솔루션의 중추적 역할을 수행한다.3
+## 🚀 주요 기능
 
-### MarkItDown의 기술적 특성 및 변환 메커니즘
+1. **문서 파싱 및 지식 추출 (Upload & Parse)**
+   - `MarkItDown`을 활용하여 업로드된 문서를 Markdown으로 변환합니다.
+   - 로컬 LLM(Ollama)이 문서 텍스트를 분석하여 핵심 주제를 추출하고, 프론트매터(Frontmatter)가 포함된 개별 위키 페이지(Markdown)로 분할하여 자동 생성합니다.
+2. **로컬 지식 저장소 (Local Knowledge Base)**
+   - 생성된 위키 파일은 사용자 로컬 PC(`~/.markmind/data/wiki`)에 안전하게 저장됩니다.
+   - 검색을 위해 `ChromaDB`에 문서 내용과 메타데이터가 벡터화되어 로컬 저장(`~/.markmind/data/chroma`)됩니다.
+3. **RAG 기반 챗봇 (Chat with Data)**
+   - 사용자의 질문에 대해 ChromaDB에서 가장 관련된 위키 문서를 검색합니다.
+   - 검색된 문맥(Context)을 바탕으로 로컬 LLM이 빠르고 정확한 답변을 생성합니다.
 
-MarkItDown은 결정론적 규칙 기반의 변환과 머신러닝(ML) 기반의 시맨틱 파싱을 결합한 하이브리드 접근 방식을 취한다. 기존의 변환 도구들이 단순히 글꼴 크기나 굵기를 기준으로 제목을 판단하는 것과 달리, MarkItDown은 문서 내의 논리적 섹션, 제목 계층, 표의 구조적 연결성 등을 종합적으로 판단하여 Markdown 태그를 생성한다.3
+## 🛠️ 기술 스택
 
-| 기능 구성 요소 | 상세 구현 기술 및 특징 | 기술적 가치 |
-| :--- | :--- | :--- |
-| 다중 포맷 처리 | PDF, DOCX, PPTX, XLSX, HTML, CSV, JSON 등 지원 3 | 비즈니스 데이터의 통합 수집 기반 마련 |
-| 시맨틱 섹션 감지 | ML 모델을 통한 Overview, Background, Steps 등의 논리적 구분 4 | 문서의 맥락 파악 및 정밀 요약 가능성 향상 |
-| 구조적 무결성 보존 | 제목 계층, 목록 구조, 표 형식의 엄격한 Markdown 전환 3 | LLM의 토큰 효율성 극대화 및 오답률 감소 |
-| 확장 플러그인 시스템 | 서드파티 플러그인을 통한 맞춤형 변환 로직 통합 3 | 도메인 특화 용어 처리 및 변환 규칙 커스터마이징 |
-| API 및 CLI 인터페이스 | convert_local, convert_stream 등 세분화된 호출 방식 3 | 마이크로서비스 아키텍처로의 유연한 통합 가능 |
+- **Backend**: Python, FastAPI, ChromaDB, Ollama, MarkItDown
+- **Frontend**: React (TypeScript, Vite), Axios
+- **Desktop**: Tauri (예정/진행중)
 
-이러한 아키텍처는 특히 대규모 문서군을 처리해야 하는 엔터프라이즈 환경에서 강력한 위력을 발휘한다. MarkItDown은 `markitdown[all]` 옵션을 통해 필요한 종속성을 관리하며, Python 3.10 이상의 환경에서 최적화된 성능을 제공한다.3 또한, 이미지 내의 텍스트 추출이나 음성 파일의 전사 기능까지 포괄하고 있어, PDF 내에 포함된 다양한 멀티미디어 요소들을 Markdown이라는 단일한 시각적 언어로 통합하는 데 탁월한 성능을 보인다.3
+## 💻 실행 방법 (로컬 개발 환경)
 
-### 변환 정밀도 향상을 위한 엔진 최적화 전략
+### 사전 요구 사항
+- Python 3.10 이상
+- Node.js
+- **Ollama**: 로컬에 설치 및 실행 중이어야 하며, 기본적으로 `llama3` 모델이 필요합니다. (`ollama run llama3`)
 
-MarkItDown의 기본 변환 로직은 훌륭하지만, 복잡한 레이아웃을 가진 전문 서적이나 기술 보고서의 경우 추가적인 보정이 필요하다. 본 솔루션은 MarkItDown의 `llm_client` 기능을 활성화하여 GPT-4o와 같은 시각 인식 모델과 연동함으로써, 문서 내의 도표나 이미지에 대한 상세한 설명을 텍스트로 치환하여 Markdown에 삽입하는 전략을 취한다.3 이는 단순히 "이미지 1"이라고 표시되는 기존 방식에서 벗어나, 이미지의 내용을 LLM이 이해할 수 있는 형태의 풍부한 텍스트로 변환함으로써 지식의 밀도를 높이는 효과를 가져온다.3
+### 1. 백엔드(Backend) 실행
+```bash
+cd backend
+# 가상환경 생성 및 활성화 (선택)
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-또한, 대규모 병렬 처리를 위해 Redis와 같은 메시지 브로커를 활용한 작업 큐 시스템을 도입한다. MarkItDown의 가벼운 설치 공간(약 251MB)은 컨테이너화된 환경에서 수평적 확장을 용이하게 하며, 이는 수만 페이지에 달하는 PDF 아카이브를 단시간 내에 지식화하는 데 필수적인 요소이다.6
+# 패키지 설치
+pip install -r requirements.txt
 
-## LLM-wiki: 상태 보존적 지식 생태계의 구축
-
-기존의 지식 관리 시스템이 가진 근본적인 한계는 지식이 조각난 채로 저장되어, 필요할 때마다 파편화된 정보를 다시 조립해야 한다는 점에 있다. 안드레 카파시가 제안한 LLM-wiki는 이러한 '상태 비보존적(Stateless)' 지식 접근법을 타파하고, AI 에이전트가 지속적으로 읽고 쓰며 관리하는 '상태 보존적(Stateful)' 지식 저장소를 지향한다.1
-
-### LLM-wiki의 철학과 구조적 차별성
-
-전통적인 RAG 시스템은 사용자의 쿼리가 발생할 때마다 벡터 데이터베이스에서 관련 청크를 검색하여 답변을 생성한다. 이 과정에서 시스템은 과거에 수행했던 분석이나 요약 결과를 기억하지 못하며, 매번 동일한 추론 비용을 지불해야 한다.1 반면 LLM-wiki는 새로운 문서(Source)가 유입될 때마다 이를 기존의 Markdown 파일들과 비교 분석하여, 중복된 정보를 통합하고 새로운 연결 고리를 생성하는 '컴파일' 과정을 거친다.7
-
-이 아키텍처는 세 가지 핵심 레이어로 구성된다:
-1. **원천 데이터(Raw Sources)**: 수정 불가능한 원본 PDF 및 자산들이다.9
-2. **지식 본체(Markdown Wiki)**: 상호 연결된 Markdown 파일들의 집합으로, 각 파일은 특정 개념이나 엔티티에 대한 '백과사전식' 정보를 담고 있다.1
-3. **스키마 및 제어(Schema & Control)**: 위키의 편집 규칙과 에이전트의 행동 지침을 정의하는 `CLAUDE.md` 또는 `AGENTS.md` 파일이다.9
-
-이러한 구조에서 Markdown은 단순한 포맷을 넘어, 인간과 AI가 공통으로 이해하고 편집할 수 있는 '코드베이스' 역할을 수행한다.7 Obsidian과 같은 편집기는 이 지식 코드베이스를 위한 통합 개발 환경(IDE)이 되며, LLM은 이 코드베이스를 지속적으로 개선하는 숙련된 프로그래머가 된다.7
-
-### 양방향 링크 및 프론트매터 자동화 설계
-
-LLM-wiki의 핵심 기능인 지식 간의 연결성은 Markdown의 위키 링크(`[[페이지 이름]]`) 형식을 통해 구현된다.10 새로운 PDF가 MarkItDown에 의해 Markdown으로 변환되면, 에이전트는 해당 문서에서 언급된 주요 개념들을 식별하고, 이미 존재하는 위키 페이지가 있다면 해당 내용을 업데이트하며, 없다면 새로운 페이지를 생성한다.7
-
-이 과정에서 각 Markdown 파일의 상단에는 YAML 형식의 프론트매터(Frontmatter)가 자동으로 삽입된다. 프론트매터에는 생성일, 수정일, 태그, 요약 정보 및 관련 소스 파일에 대한 메타데이터가 포함되며, 이는 시스템이 지식의 최신성과 신뢰도를 관리하는 데 결정적인 데이터가 된다.8
-
-| 데이터 필드 | 설명 및 용도 | 자동화 로직 |
-| :--- | :--- | :--- |
-| Title | 엔티티 또는 주제의 공식 명칭 | LLM에 의한 의미론적 명명 10 |
-| Summary | 한 문장으로 된 핵심 요약 | 문서 요약 엔진 기반 생성 10 |
-| Tags | 주제 분류를 위한 해시태그 집합 | 사전 정의된 온톨로지 매핑 10 |
-| Last Updated | 지식의 최신성을 나타내는 타임스탬프 | 파일 수정 시 자동 갱신 8 |
-| Sources | 근거가 되는 원본 PDF 파일 경로 | 인제스트 로그와 연동 관리 7 |
-
-## 시스템 통합 및 워크플로우 개발 계획
-
-솔루션의 실제 구현은 PDF의 유입부터 위키의 정제에 이르는 전 과정을 자동화하는 파이프라인 구축에 집중된다.
-
-### 단계별 인제스트 및 합성 파이프라인
-
-새로운 지식 자산이 시스템에 유입되면 다음과 같은 순차적 프로세스가 실행된다:
-1. **인제스트 단계**: MarkItDown 라이브러리를 통해 PDF 파일을 Markdown 스트림으로 전환한다. 이때 `convert_stream` 기능을 사용하여 대용량 파일의 메모리 부하를 줄이고, `enable_plugins=True` 설정을 통해 구조적 메타데이터를 최대한 확보한다.3
-2. **파싱 및 청킹 단계**: 변환된 Markdown을 논리적 섹션 단위로 분할한다. MarkItDown이 생성한 헤더 태그(`#`, `##`)를 기준으로 분할하여 의미적 단위를 유지한다.4
-3. **에이전트 분석 단계**: AI 에이전트(예: Claude Code 또는 커스텀 LangChain 에이전트)가 분할된 텍스트를 읽고, 기존 위키 저장소의 인덱스와 비교한다.7
-4. **지식 합성 단계**: 에이전트는 새로운 정보가 기존 지식을 보강하는지, 수정하는지, 혹은 완전히 새로운 주제인지를 결정한다. 카파시의 패턴에 따르면, 하나의 소스 문서는 평균적으로 10~15개의 위키 페이지를 건드리는 정교한 업데이트 과정을 거친다.7
-5. **링크 정제 단계**: 업데이트된 페이지들과 관련된 다른 페이지들에 양방향 링크를 생성하거나 갱신하여 지식 그래프의 밀도를 높인다.12
-
-### 검색 및 인터페이스 최적화
-
-구축된 LLM-wiki는 단순한 텍스트 파일 더미가 아니라, 강력한 검색 기능을 탑재한 동적 지식 베이스로 작동해야 한다. 이를 위해 BM25 알고리즘 기반의 키워드 검색과 벡터 임베딩 기반의 시맨틱 검색을 결합한 하이브리드 검색 엔진을 구축한다.7
-
-검색 엔진의 핵심은 위키의 프론트매터를 필터로 활용하는 것이다. 사용자가 특정 태그나 날짜 범위 내의 지식을 찾을 때, 시스템은 모든 파일 내용을 뒤지는 대신 YAML 메타데이터를 먼저 스캔하여 검색 범위를 좁힌다.8 또한, Obsidian의 Dataview 플러그인과 유사한 기능을 웹 인터페이스에 구현하여, 특정 주제에 대한 동적 테이블이나 리스트를 실시간으로 생성하여 보여준다.7
-
-사용자 인터페이스(UI) 개발에는 Docusaurus와 React를 활용한다. Docusaurus는 Markdown 기반의 문서를 미려한 웹사이트로 전환하는 데 탁월하며, 'Ask AI' 기능을 통합하여 사용자가 자연어로 위키에 질문하고 답변을 얻을 수 있는 인터페이스를 제공한다.13 특히 'Swizzling' 기법을 사용하여 검색바 컴포넌트를 커스터마이징함으로써, AI 에이전트와의 실시간 채팅 대화창을 검색 인터페이스에 직접 통합한다.13
-
-## 지식 품질 관리 및 시스템 확장성 확보
-
-지식 베이스가 커질수록 정보의 중복, 링크의 단절, 최신성 결여 등의 품질 문제가 발생할 가능성이 높다. 이를 방지하기 위해 자동화된 '지식 린팅(Knowledge Linting)' 시스템을 도입한다.
-
-### 지식 린팅 및 정기 정제 로직
-
-품질 관리 에이전트는 주기적으로 위키 전체를 스캔하며 다음 항목을 검사한다:
-*   **고립된 페이지(Orphans)**: 어떤 페이지와도 연결되지 않은 고립된 지식을 찾아 관련 주제와 연결을 시도한다.8
-*   **깨진 링크(Broken Links)**: 존재하지 않는 페이지를 가리키는 위키 링크를 식별하여 수정하거나 제거한다.8
-*   **페이지 크기 관리**: 한 페이지가 너무 길어지면(예: 800라인 초과) 논리적 하위 주제로 분할하여 지식의 원자성을 유지한다.8
-*   **모순 감지**: 새로운 정보와 기존 정보가 상충할 경우 사용자에게 알림을 보내고, 논리적 판단을 통해 더 신뢰할 수 있는 소스를 우선시하도록 권장한다.7
-
-### 대규모 데이터 처리 및 샤딩 전략
-
-위키 페이지가 150개를 넘어서거나 인덱스 파일이 과도하게 커질 경우, 검색 성능 저하를 막기 위해 인덱스 샤딩(Sharding)을 실시한다.8 주제별 또는 시기별로 저장소를 분할하되, 에이전트가 모든 샤드를 통합적으로 조망할 수 있는 중앙 허브 인덱스를 유지함으로써 지식의 파편화를 방지한다.8
-
-보안 측면에서는 MarkItDown의 실행 권한을 엄격히 제한하고, 외부 URI 접근이나 민감한 로컬 파일 시스템 경로에 대한 샌드박싱을 적용한다.3 또한, 모든 지식의 변경 이력을 Git 레포지토리로 관리하여, 잘못된 합성이나 데이터 오염이 발생했을 때 즉각적으로 이전 상태로 복구할 수 있는 체계를 갖춘다.7
-
-## 결론 및 제언
-
-본 개발 계획은 Microsoft MarkItDown의 범용적인 변환 능력과 안드레 카파시의 LLM-wiki가 가진 선구적인 지식 축적 철학을 결합하여, 기업의 비정형 데이터를 실질적인 지능형 자산으로 전환하는 구체적인 경로를 제시한다. PDF를 단순히 텍스트로 바꾸는 것에 그치지 않고, 이를 상호 연결된 의미론적 네트워크로 구축하는 과정은 RAG의 한계를 넘어선 진정한 의미의 '조직적 기억'을 생성하는 일이다.1
-
-성공적인 솔루션 구축을 위해서는 초기에는 MarkItDown의 기본 변환 정밀도를 확보하는 데 집중하고, 점진적으로 에이전트의 합성 로직을 고도화하며, 최종적으로는 사용자의 개입 없이도 지식이 스스로 정제되고 확장되는 자율형 지식 생태계를 지향해야 한다.7 이러한 시스템은 단순한 도구를 넘어, AI 시대에 조직이 지식을 습득, 보존, 활용하는 방식을 근본적으로 재정의할 것이다. 조직의 모든 구성원이 AI가 정리한 고밀도의 지식 위키를 탐험하며 새로운 통찰을 얻는 미래는, 본 보고서에서 상술한 기술적 기반 위에서 실현될 수 있다.
-
----
-
-## 심층 기술 부록
-
-### 문서 변환 엔진의 심층 분석: MarkItDown의 내부 작동 원리
-
-솔루션의 성공은 입력 단계의 품질, 즉 MarkItDown이 얼마나 정확하게 PDF의 시각적 요소를 Markdown의 구조적 요소로 치환하느냐에 달려 있다. MarkItDown의 핵심 클래스인 `DocumentConverter`는 객체 지향적 설계 원칙을 준수하며, 다양한 포맷에 대응하기 위해 플러그인 기반의 확장 아키텍처를 채택하고 있다.5
-
-**PDF 변환의 기술적 난제와 해결책**
-PDF는 본래 인쇄를 위해 설계된 고정 레이아웃 포맷으로, 텍스트의 흐름 정보가 결여된 경우가 많다. MarkItDown은 이러한 한계를 극복하기 위해 두 가지 전략을 사용한다. 첫째, 텍스트의 좌표값과 스타일 정보를 분석하여 제목(H1~H6)과 단락을 구분하는 휴리스틱 엔진을 가동한다.4 둘째, 단순한 규칙으로 해결되지 않는 복잡한 레이아웃에 대해서는 Azure Document Intelligence와 같은 외부 모델을 선택적으로 호출하여, 고도의 시맨틱 분석 결과를 Markdown에 반영한다.3
-
-| 변환 대상 요소 | MarkItDown 처리 방식 | 비고 |
-| :--- | :--- | :--- |
-| 복합 표 (Tables) | 셀 병합 및 정렬 상태를 분석하여 Markdown 표 문법으로 재구성 3 | 중첩 표의 경우 평면화 처리 가능성 존재 |
-| 수학 공식 | LaTeX 문법으로 변환하여 `$$` 태그 내에 삽입 5 | 수식 전용 OCR 플러그인과 연동 가능 |
-| 멀티 컬럼 레이아웃 | 읽기 순서(Reading Order)를 분석하여 단일 스트림으로 재정렬 15 | 텍스트 흐름의 왜곡 방지 핵심 기술 |
-| 하이퍼링크 | 문서 내 참조 및 외부 URL을 Markdown 링크 형식으로 복원 3 | PDF 내의 깨진 링크 필터링 가능 |
-
-특히 MarkItDown은 `markitdown-ocr` 플러그인을 통해 PDF 내에 삽입된 이미지 형태의 텍스트까지도 처리할 수 있는 가능성을 열어두고 있다.3 본 솔루션에서는 이를 활용하여 텍스트 계층과 이미지 계층이 혼재된 복합 문서를 단일한 Markdown 텍스트로 통합한다.
-
-### 시맨틱 파싱의 깊이: 규칙 기반에서 모델 기반으로의 전이
-
-전통적인 변환 도구들이 범하는 가장 큰 오류는 문맥을 무시한 직역이다. MarkItDown은 이를 극복하기 위해 "이 굵은 텍스트는 제목인가, 아니면 강조인가?"라는 질문에 답하기 위해 주변 텍스트와의 관계를 분석하는 ML 모델을 도입한다.4 예를 들어, 문서 서두에 나타나는 짧은 문장은 제목으로, 본문 중간의 짧은 문장은 강조로 인식하는 등의 맥락 이해가 포함된다.
-
-이러한 시맨틱 파싱은 지식 축적 단계에서 에이전트가 문서를 요약하거나 태그를 달 때 검색 효율을 획기적으로 높여준다. 잘 구조화된 Markdown은 LLM의 어텐션(Attention) 메커니즘이 핵심 정보에 집중하게 만들어, 답변의 정확도를 높이고 할루시네이션(Hallucination)을 줄이는 결과로 이어진다.3
-
-### LLM-wiki의 지식 합성 알고리즘: 지속적 성장의 원동력
-
-변환된 Markdown 파일들이 위키 저장소에 유입된 이후의 프로세스는 단순한 저장을 넘어선 '지능형 합성'의 과정이다. 안드레 카파시가 강조한 바와 같이, 지식은 시간이 지남에 따라 복리로 쌓여야 하며, 이를 위해서는 에이전트가 능동적으로 지식 간의 관계를 재정의해야 한다.1
-
-**엔티티 추출 및 지식 그래프 형성**
-에이전트는 변환된 텍스트에서 주요 명사구와 개념적 엔티티를 추출한다. 이때 단순한 키워드 추출을 넘어, 위키 내의 기존 엔티티들과의 유사성을 계산한다.
-
-이 점수가 임계값 이상일 경우, 에이전트는 두 지식이 동일한 주제를 다루고 있다고 판단하여 내용을 병합하거나 상호 참조 링크를 생성한다.7 이러한 방식은 지식의 중복을 방지하고, 사용자가 하나의 주제를 검색했을 때 관련된 모든 맥락을 한 번에 파악할 수 있게 돕는다.
-
-**지식 갱신 및 충돌 해결 메커니즘**
-새로운 문서가 기존 지식과 배치되는 정보를 담고 있을 경우, 시스템은 단순 삭제 대신 '버전 관리'와 '논리적 병합'을 수행한다. 프론트매터의 `updated` 날짜와 소스의 `reliability` 점수를 비교하여 더 최신의, 혹은 더 신뢰할 수 있는 정보를 상단에 배치하고, 상충하는 정보는 "Alternative Views" 또는 "Conflicting Reports" 섹션으로 하단에 배치하여 정보의 객관성을 유지한다.7
-
-또한, 에이전트는 지식의 결손 부위를 찾는 '질문 생성' 기능도 수행한다. 예를 들어, 특정 프로젝트에 대한 정보는 풍부하지만 그 결과나 성과에 대한 정보가 부족하다면, 에이전트는 위키의 미완성 섹션에 질문을 남겨 사용자가 추가적인 문서를 업로드하도록 유도한다. 이는 지식 시스템이 수동적인 저장소에서 능동적인 파트너로 진화하는 과정이다.7
-
-### 개발 환경 구축 및 운영 전략
-
-솔루션의 개발은 신속한 프로토타이핑과 견고한 엔지니어링의 조화를 지향한다.
-
-**기술 스택 및 개발 우선순위**
-개발 초기에는 MarkItDown의 Python API를 래핑한 CLI 도구와 기초적인 Markdown 저장소 구조를 확립하는 데 주력한다. 이후 단계적으로 에이전트 기능을 통합한다.
-
-| 개발 단계 | 주요 목표 | 핵심 기술 |
-| :--- | :--- | :--- |
-| 1단계: 파이프라인 기초 | PDF를 안정적으로 Markdown으로 변환 및 저장소 동기화 | Python, MarkItDown, Git 3 |
-| 2단계: 시맨틱 정제 | 에이전트를 통한 요약 생성 및 자동 태깅 시스템 구축 | Claude Code, YAML Frontmatter 8 |
-| 3단계: 지식 연결 | 양방향 링크 생성 및 지식 린팅 엔진 개발 | BM25 Search, Custom Linting Scripts 8 |
-| 4단계: 인터페이스 통합 | 사용자 친화적인 웹 대시보드 및 AI 채팅 인터페이스 제공 | React, Docusaurus, Algolia 13 |
-
-**운영 환경에서의 보안 및 성능 관리**
-엔터프라이즈 환경에서 지식 관리 시스템은 민감한 정보를 다루게 된다. MarkItDown의 보안 지침에 따라, 모든 파일 변환 작업은 해당 사용자의 권한 범위를 넘어서는 자원에 접근할 수 없도록 프로세스 수준에서 격리된다.3 또한, LLM에 데이터를 전송하기 전에 정규표현식 기반의 개인정보 필터링(DLP) 레이어를 두어, 이름, 주민번호, 연락처 등의 정보가 외부 모델로 유출되는 것을 방지한다.
-
-성능 측면에서는 대규모 Markdown 파일의 검색 속도를 보장하기 위해 인덱싱 자동화가 중요하다. 매번 파일 전체를 읽는 대신, 파일 수정 시마다 메타데이터를 추출하여 소형 SQLite 데이터베이스나 로컬 JSON 인덱스에 저장함으로써, 수만 개의 문서 중에서도 1초 이내에 관련 정보를 찾아낼 수 있는 구조를 유지한다.8
-
-### 미래 전망: 자율적으로 학습하는 기업용 지식 뇌
-
-본 솔루션이 추구하는 최종적인 목표는 단순히 문서를 관리하는 것이 아니라, 조직의 '디지털 브레인'을 구축하는 것이다. MarkItDown을 통해 유입된 파편화된 데이터들은 LLM-wiki라는 용광로에서 정제되고 연결되어, 시간이 흐를수록 더 강력한 추론 능력을 발휘하게 된다.1
-
-향후에는 텍스트를 넘어 협업 툴(Slack, Teams)의 대화나 이메일까지도 동일한 방식으로 위키에 통합될 것이다. "A 프로젝트의 지연 사유가 무엇인가?"라는 질문에 대해, 시스템은 과거의 보고서(PDF), 최근의 회의록(Markdown), 그리고 실시간 대화 기록을 종합하여 가장 정확하고 맥락이 풍부한 답변을 제시할 수 있게 된다.7
-
-이러한 지식의 복리 효과는 조직의 학습 속도를 획기적으로 가속화하며, 구성원의 퇴사나 교체에도 불구하고 조직의 지적 자산이 손실되지 않고 온전히 계승되는 지식 영속성을 실현할 것이다. 본 계획안은 그 여정의 시작점으로서, 가장 신뢰할 수 있는 오픈소스 도구와 최신의 AI 아키텍처를 결합한 견고한 설계도를 제시한다.
-
----
-
-### 지식의 엔트로피 관리: 린팅 스크립트의 논리 구조
-
-위키의 품질을 유지하는 린팅 스크립트는 매일 자정 실행되어 저장소의 상태를 점검한다. 스크립트는 다음과 같은 논리 구조를 가진다:
-
-```python
-# 지식 린팅 의사코드 예시
-def knowledge_lint(wiki_path):
-    all_files = list_markdown_files(wiki_path)
-    index = build_metadata_index(all_files)
-    
-    for file in all_files:
-        # 1. 고립된 페이지 검사
-        if not has_incoming_links(file, index):
-            suggest_connections(file, index)
-            
-        # 2. 내용 과밀화 검사
-        if line_count(file) > 800:
-            flag_for_splitting(file)
-            
-        # 3. 프론트매터 누락 검사
-        if not has_valid_frontmatter(file):
-            generate_default_frontmatter(file)
-            
-        # 4. 깨진 링크 검사
-        broken_links = find_broken_wikilinks(file, index)
-        fix_or_report(broken_links)
+# FastAPI 서버 실행
+uvicorn main:app --reload
+# 서버는 http://127.0.0.1:8000 에서 실행됩니다.
 ```
 
-이러한 자동화된 유지관리는 인간 관리자의 개입을 최소화하면서도, 수천 개의 문서가 얽힌 복잡한 지식 네트워크가 무너지지 않도록 지탱하는 중추 역할을 한다.8
+### 2. 프론트엔드(Frontend) 실행
+```bash
+cd frontend
 
-### 최종 시스템 배포 및 사용자 교육 전략
+# 패키지 설치
+npm install
 
-기술적 구축이 완료된 후, 시스템의 성공은 실제 사용자들이 이 지식 기반을 어떻게 활용하느냐에 달려 있다.
+# 개발 서버 실행
+npm run dev
+# 보통 http://localhost:5173 에서 실행됩니다.
+```
 
-**에이전트 중심의 사용자 상호작용**
-사용자는 위키를 직접 편집할 수도 있지만, 주로 에이전트를 통해 지식을 소비하고 기여한다. "최근 올라온 PDF 보고서 3개를 요약해서 우리 위키의 '시장 트렌드' 페이지에 반영해줘"와 같은 명령을 내리면, 시스템은 MarkItDown으로 변환, 에이전트로 분석, 위키 합성을 거쳐 결과를 리포트한다.7
+## 📁 디렉토리 구조
 
-**하이브리드 인터페이스의 활용**
-전문 사용자는 Obsidian을 사용하여 로컬에서 지식 그래프를 시각적으로 탐색하고, 일반 사용자는 Docusaurus 기반의 웹 포털을 통해 정보를 검색한다.10 두 인터페이스는 Git을 통해 동일한 Markdown 저장소를 공유하므로, 어떤 경로로 접근하든 항상 최신의 지식을 보장받는다.7
-
-이 개발 계획은 최첨단 AI 기술과 검증된 소프트웨어 엔지니어링 원칙을 결합하여, 기업이 보유한 잠자는 데이터를 살아있는 지식으로 바꾸는 가장 현실적이고 강력한 방안을 제시한다. MarkItDown을 통한 정밀한 변환과 LLM-wiki를 통한 지속적인 합성은, 데이터 과잉 시대에 조직이 길을 잃지 않고 지혜를 축적해 나가는 핵심 무기가 될 것이다.
-
----
-
-### 참고 자료
-1. LLM Wiki by Andrej Karpathyi: Build a Compounding Knowledge Base (Tutorial), https://datasciencedojo.com/blog/llm-wiki-tutorial/
-2. What is RAG? - Retrieval-Augmented Generation AI Explained - AWS, https://aws.amazon.com/what-is/retrieval-augmented-generation/
-3. GitHub - microsoft/markitdown: Python tool for converting files and ..., https://github.com/microsoft/markitdown
-4. Microsoft MarkItDown: Open-Source Tool for Markdown Conversion and AI Document Parsing - remio, https://www.remio.ai/post/microsoft-markitdown-open-source-tool-for-markdown-conversion-and-ai-document-parsing
-5. MarkItDown: Convert Documents to Markdown, https://nsddd.top/projects/markitdown/
-6. I benchmarked 4 Python text extraction libraries (2025) - DEV Community, https://dev.to/nhirschfeld/i-benchmarked-4-python-text-extraction-libraries-2025-4e7j
-7. LLM Wiki - gist/GitHub, https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
-8. Turned Andrej Karpathy's "LLM Wiki" gist into a Claude Code plugin. Also works in Codex, OpenCode, Cursor, Gemini CLI, Pi, and OpenClaw. - Reddit, https://www.reddit.com/r/ClaudeCode/comments/1sm374u/turned_andrej_karpathys_llm_wiki_gist_into_a/
-9. What Is Andrej Karpathy's LLM Wiki? How to Get the Same Results Without Code Using Dume Cowork, https://www.dume.ai/blog/what-is-andrej-karpathys-llm-wiki-how-to-get-the-same-results-without-code-using-dume-cowork
-10. What Is Andrej Karpathy's LLM Wiki? How to Build a Personal Knowledge Base With Claude Code | MindStudio, https://www.mindstudio.ai/blog/andrej-karpathy-llm-wiki-knowledge-base-claude-code
-11. Andrej Karpathy's LLM Wiki: Create your own knowledge base | by Urvil Joshi - Medium, https://medium.com/@urvvil08/andrej-karpathys-llm-wiki-create-your-own-knowledge-base-8779014accd5
-12. How to Build a Local LLM Knowledge Base With Obsidian (2026) - ModemGuides, https://www.modemguides.com/blogs/ai-infrastructure/local-llm-knowledge-base-obsidian-setup-guide
-13. Search | Docusaurus, https://docusaurus.io/docs/search
-14. Command line utilities - Lib.rs, https://lib.rs/command-line-utilities
-15. GitHub - docling-project/docling: Get your documents ready for gen AI, https://github.com/DS4SD/docling
-16. Karpathy shares 'LLM Knowledge Base' architecture that bypasses RAG with an evolving markdown library maintained by AI | VentureBeat, https://venturebeat.com/data/karpathy-shares-llm-knowledge-base-architecture-that-bypasses-rag-with-an
+- `backend/`: FastAPI 기반의 API 서버, RAG 로직, LLM 연동 코드
+  - `main.py`: 서버 메인 진입점 및 API 라우터 (Upload, Chat)
+  - `ai/`: 문서 파싱(`parser.py`) 및 Ollama 연동(`llm.py`) 모듈
+  - `database/`: ChromaDB 연동 및 컬렉션 관리(`chroma.py`)
+- `frontend/`: React + Vite 기반의 사용자 인터페이스
+  - `src/App.tsx`: 파일 업로드 및 채팅 UI
+- `src-tauri/`: 향후 데스크톱 앱 패키징을 위한 Tauri 설정 폴더
