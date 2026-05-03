@@ -156,6 +156,19 @@ def _process_document(doc_id: str, file_path: str, filename: str, save_dir: Path
 
             _set_progress(15 + int((idx + 1) / total * 75), wiki_count)
 
+        # 파싱은 성공했지만 LLM이 한 페이지도 생성하지 못한 경우 경고 메시지 저장
+        valid_chunks = sum(1 for c in chunks if len(c.strip()) >= 100)
+        if wiki_count == 0 and valid_chunks > 0:
+            with db() as conn:
+                conn.execute(
+                    "UPDATE documents SET error_message=?,updated_at=? WHERE id=?",
+                    (
+                        f"LLM이 위키 페이지를 생성하지 못했습니다 "
+                        f"({valid_chunks}개 청크 처리 시도). "
+                        "Ollama 모델이 설치되어 있는지 확인하세요: ollama pull llama3",
+                        now_iso(), doc_id,
+                    ),
+                )
         _set_progress(100, wiki_count, "done")
 
     except Exception as exc:

@@ -55,5 +55,5 @@ def extract_wiki_pages(
         pages = provider.extract_wiki_pages(text_chunk, source_name=source_name)
         return [p.model_dump() for p in pages]
     except (ProviderUnavailableError, ParseError) as exc:
-        print(f"Extraction Error: {exc}")
+        print(f"[LLM] Extraction error: {exc}", flush=True)
         return []
