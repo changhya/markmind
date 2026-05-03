@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 chromadb
-markitdown
+markitdown[docx,pptx,xlsx,pdf]
 ollama
 anthropic>=0.40
 pydantic
