@@ -44,7 +44,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto p-6 gap-6 max-w-2xl">
+    <div className="flex-1 min-h-0 overflow-y-auto">
+    <div className="flex flex-col p-6 gap-6 max-w-2xl pb-10">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Settings className="w-5 h-5 text-indigo-400" />
@@ -57,13 +58,13 @@ export default function SettingsPage() {
       {/* Backend */}
       <Section title="Backend 연결">
         <Field label="API URL" hint="MarkMind 백엔드 서버 주소 (기본: http://127.0.0.1:8000)">
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus-within:border-indigo-500 transition-colors">
+          <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 focus-within:border-indigo-500 transition-colors w-full">
             <Server className="w-4 h-4 text-slate-500 flex-shrink-0" />
             <input
               type="text"
               value={backendUrl}
               onChange={(e) => setBackendUrl(e.target.value)}
-              className="flex-1 bg-transparent text-sm text-white outline-none placeholder-slate-600"
+              className="flex-1 bg-transparent text-base text-white outline-none placeholder-slate-600 py-1.5"
               placeholder="http://127.0.0.1:8000"
             />
           </div>
@@ -73,14 +74,14 @@ export default function SettingsPage() {
       {/* LLM Model */}
       <Section title="Edge AI 모델">
         <Field label="기본 Ollama 모델" hint="Ollama에서 pull된 모델 이름을 입력하세요">
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus-within:border-indigo-500 transition-colors">
+          <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 focus-within:border-indigo-500 transition-colors w-full">
             <Cpu className="w-4 h-4 text-slate-500 flex-shrink-0" />
             <input
               type="text"
               value={defaultModel}
               onChange={(e) => setDefaultModel(e.target.value)}
               list="model-suggestions"
-              className="flex-1 bg-transparent text-sm text-white outline-none placeholder-slate-600"
+              className="flex-1 bg-transparent text-base text-white outline-none placeholder-slate-600 py-1.5"
               placeholder="llama3"
             />
             <datalist id="model-suggestions">
