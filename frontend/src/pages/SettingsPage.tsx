@@ -6,9 +6,9 @@ const MODELS = ['llama3', 'llama3.1', 'llama3.2', 'mistral', 'gemma2', 'qwen2', 
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-      <div className="px-5 py-3 border-b border-slate-700">
-        <h2 className="text-sm font-semibold text-slate-200">{title}</h2>
+    <div className="bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-300 dark:border-slate-700 overflow-hidden">
+      <div className="px-5 py-3 border-b border-slate-300 dark:border-slate-700">
+        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{title}</h2>
       </div>
       <div className="p-5 space-y-4">{children}</div>
     </div>
@@ -18,9 +18,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-300 mb-1.5">{label}</label>
+      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
       {children}
-      {hint && <p className="text-[11px] text-slate-600 mt-1">{hint}</p>}
+      {hint && <p className="text-[11px] text-slate-400 dark:text-slate-600 mt-1">{hint}</p>}
     </div>
   );
 }
@@ -48,23 +48,23 @@ export default function SettingsPage() {
     <div className="flex flex-col p-6 gap-6 max-w-2xl pb-10">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Settings className="w-5 h-5 text-indigo-400" />
+        <Settings className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
         <div>
-          <h1 className="text-xl font-bold text-white">Settings</h1>
-          <p className="text-xs text-slate-400 mt-0.5">로컬 환경 및 AI 모델 설정</p>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Settings</h1>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">로컬 환경 및 AI 모델 설정</p>
         </div>
       </div>
 
       {/* Backend */}
       <Section title="Backend 연결">
         <Field label="API URL" hint="MarkMind 백엔드 서버 주소 (기본: http://127.0.0.1:8000)">
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 focus-within:border-indigo-500 transition-colors w-full">
-            <Server className="w-4 h-4 text-slate-500 flex-shrink-0" />
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-3 focus-within:border-indigo-500 transition-colors w-full">
+            <Server className="w-4 h-4 text-slate-500 dark:text-slate-500 flex-shrink-0" />
             <input
               type="text"
               value={backendUrl}
               onChange={(e) => setBackendUrl(e.target.value)}
-              className="flex-1 bg-transparent text-base text-white outline-none placeholder-slate-600 py-1.5"
+              className="flex-1 bg-transparent text-base text-slate-900 dark:text-white outline-none placeholder-slate-600 py-1.5"
               placeholder="http://127.0.0.1:8000"
             />
           </div>
@@ -74,14 +74,14 @@ export default function SettingsPage() {
       {/* LLM Model */}
       <Section title="Edge AI 모델">
         <Field label="기본 Ollama 모델" hint="Ollama에서 pull된 모델 이름을 입력하세요">
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 focus-within:border-indigo-500 transition-colors w-full">
-            <Cpu className="w-4 h-4 text-slate-500 flex-shrink-0" />
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-3 focus-within:border-indigo-500 transition-colors w-full">
+            <Cpu className="w-4 h-4 text-slate-500 dark:text-slate-500 flex-shrink-0" />
             <input
               type="text"
               value={defaultModel}
               onChange={(e) => setDefaultModel(e.target.value)}
               list="model-suggestions"
-              className="flex-1 bg-transparent text-base text-white outline-none placeholder-slate-600 py-1.5"
+              className="flex-1 bg-transparent text-base text-slate-900 dark:text-white outline-none placeholder-slate-600 py-1.5"
               placeholder="llama3"
             />
             <datalist id="model-suggestions">
@@ -97,8 +97,8 @@ export default function SettingsPage() {
               onClick={() => setDefaultModel(m)}
               className={`px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
                 defaultModel === m
-                  ? 'bg-indigo-900/60 border-indigo-500 text-indigo-300'
-                  : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                  ? 'bg-indigo-100 dark:bg-indigo-900/60 border-indigo-500 text-indigo-700 dark:text-indigo-300'
+                  : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
               {m}
@@ -114,13 +114,13 @@ export default function SettingsPage() {
             onClick={toggle}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl border w-full transition-colors ${
               dark
-                ? 'bg-slate-900 border-indigo-500 text-indigo-300'
-                : 'bg-slate-900 border-slate-600 text-slate-300'
+                ? 'bg-white dark:bg-slate-900 border-indigo-500 text-indigo-700 dark:text-indigo-300'
+                : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300'
             }`}
           >
             {dark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             <span className="text-sm font-medium">{dark ? '다크 모드' : '라이트 모드'}</span>
-            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${dark ? 'bg-indigo-900 text-indigo-400' : 'bg-amber-900/50 text-amber-400'}`}>
+            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${dark ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400' : 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400'}`}>
               {dark ? '활성' : '활성'}
             </span>
           </button>
@@ -129,18 +129,18 @@ export default function SettingsPage() {
 
       {/* About */}
       <Section title="시스템 정보">
-        <div className="space-y-2 text-xs text-slate-400">
+        <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
           <div className="flex items-center gap-2">
-            <Brain className="w-4 h-4 text-indigo-400" />
-            <span className="font-medium text-slate-200">MarkMind Edge AI</span>
-            <span className="text-slate-600">v0.1.0</span>
+            <Brain className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span className="font-medium text-slate-800 dark:text-slate-200">MarkMind Edge AI</span>
+            <span className="text-slate-400 dark:text-slate-600">v0.1.0</span>
           </div>
-          <p className="pl-6 text-slate-500">
+          <p className="pl-6 text-slate-500 dark:text-slate-500">
             Karpathy의 LLM-Wiki 철학 기반 · 100% 로컬 처리 · 클라우드 통신 없음
           </p>
           <div className="pl-6 flex flex-wrap gap-2 mt-2">
             {['FastAPI', 'Ollama', 'ChromaDB', 'MarkItDown', 'React Flow'].map((t) => (
-              <span key={t} className="bg-slate-900 border border-slate-700 px-2 py-0.5 rounded text-[10px] text-slate-500">{t}</span>
+              <span key={t} className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded text-[10px] text-slate-500 dark:text-slate-500">{t}</span>
             ))}
           </div>
         </div>
@@ -151,9 +151,10 @@ export default function SettingsPage() {
         onClick={handleSave}
         className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-6 py-3 text-sm font-medium transition-colors"
       >
-        {saved ? <CheckCircle className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
+        {saved ? <CheckCircle className="w-4 h-4 text-emerald-700 dark:text-emerald-300" /> : <Save className="w-4 h-4" />}
         {saved ? '저장 완료!' : '설정 저장'}
       </button>
+    </div>
     </div>
   );
 }
