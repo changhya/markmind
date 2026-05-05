@@ -26,3 +26,7 @@ class WikiPage(BaseModel):
     summary: str = Field(default="", max_length=500)
     tags: list[str] = Field(default_factory=list)
     content: str = Field(min_length=1)
+    updates_existing: str | None = Field(
+        default=None,
+        description="Exact title of an existing wiki page this should update, or null to create new.",
+    )

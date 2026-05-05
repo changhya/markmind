@@ -95,6 +95,14 @@ class WikiPageUpdate(BaseModel):
     tags:    Optional[list[str]] = None
 
 
+class FromAnswerRequest(BaseModel):
+    title:   str
+    content: str
+    summary: Optional[str]       = None
+    tags:    Optional[list[str]] = None
+    sources: list[dict]          = []
+
+
 class RefineRequest(BaseModel):
     context: Optional[str] = None  # additional text to incorporate
 
@@ -115,6 +123,63 @@ def list_wiki_pages(flat: bool = False):
         ).fetchall()
     pages = [{**dict(r), "tags": _parse_tags(r["tags"])} for r in rows]
     return pages if flat else _build_tree(pages)
+
+
+@router.post("/from-answer")
+def wiki_from_answer(request: FromAnswerRequest):
+    """Chat 답변을 위키 페이지로 저장 (Karpathy: good answers become new wiki pages)."""
+    from pathlib import Path as _Path
+    import re as _re
+    WIKI_DIR = _Path.home() / ".markmind" / "data" / "wiki"
+    WIKI_DIR.mkdir(parents=True, exist_ok=True)
+
+    tags       = request.tags or ["Chat Answer"]
+    summary    = request.summary or request.content[:150]
+    ts         = now_iso()
+    wiki_id    = new_id()
+    chroma_id  = new_id()
+
+    source_lines = "\n".join(
+        f"- {s.get('title') or s.get('source', '')}" for s in request.sources
+    )
+    content = (
+        request.content
+        + (f"\n\n## 출처\n{source_lines}" if source_lines else "")
+    )
+
+    fm = (
+        f'---\ntitle: "{request.title}"\n'
+        f'summary: "{summary[:200]}"\n'
+        f"tags: {tags}\n"
+        f'last_updated: "{ts}"\n'
+        f'origin: "chat"\n---\n'
+    )
+    full_content = fm + "\n\n" + content
+
+    safe_title = _re.sub(r'[\\/*?:"<>|]', "", request.title).strip()
+    wiki_file  = WIKI_DIR / f"{safe_title}.md"
+    wiki_file.write_text(full_content, encoding="utf-8")
+
+    with db() as conn:
+        conn.execute(
+            "INSERT INTO wiki_pages "
+            "(id,title,summary,tags,content,file_path,chroma_id,created_at,updated_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
+            (wiki_id, request.title, summary[:200], json.dumps(tags),
+             content, str(wiki_file), chroma_id, ts, ts),
+        )
+
+    try:
+        get_collection("wiki_pages").add(
+            documents=[full_content],
+            metadatas=[{"title": request.title, "summary": summary[:200],
+                        "tags": ",".join(tags), "source": "chat", "wiki_id": wiki_id}],
+            ids=[chroma_id],
+        )
+    except Exception:
+        pass
+
+    return {"status": "created", "id": wiki_id, "title": request.title}
 
 
 @router.get("/duplicates")

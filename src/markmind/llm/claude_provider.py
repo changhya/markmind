@@ -22,18 +22,25 @@ from .errors import ParseError, ProviderUnavailableError
 from .schemas import GenerateOptions, WikiPage
 
 _EXTRACT_SYSTEM_PROMPT = (
-    "You are an expert knowledge extractor for a wiki. "
-    "Read the supplied source text and return a JSON ARRAY of distinct "
-    "knowledge pages. Each page MUST have keys: title (1 short sentence), "
-    "summary (1 sentence), tags (list of strings), content (Markdown body). "
-    "Return ONLY the JSON array — no prose, no code fences."
+    "You are a knowledge curator maintaining a wiki knowledge base. "
+    "Your job is to integrate new content into the existing wiki — not just extract facts, "
+    "but connect them to what is already known. "
+    "Each page MUST have keys: title, summary, tags (list), content (Markdown with [[wikilinks]]), "
+    "and updates_existing (null or exact title of existing page to update). "
+    "Return ONLY a JSON array — no prose, no code fences."
 )
 
 
-def _user_prompt_for_extraction(text_chunk: str, source_name: str) -> str:
+def _user_prompt_for_extraction(
+    text_chunk: str, source_name: str, existing_context: str = ""
+) -> str:
+    ctx = existing_context or "None yet (this is the first ingest)"
     return (
-        f"Source name: {source_name}\n\n"
-        f"Source text:\n{text_chunk}\n\n"
+        f"EXISTING WIKI PAGES:\n{ctx}\n\n"
+        f"SOURCE: {source_name}\n\n"
+        f"NEW CONTENT TO INTEGRATE:\n{text_chunk}\n\n"
+        "Instructions: extract 1-3 key concepts, use [[Page Title]] cross-references, "
+        "set updates_existing to an existing page's EXACT title if this content extends it.\n\n"
         "Return the JSON array now."
     )
 
@@ -115,6 +122,7 @@ class ClaudeProvider(LLMProvider):
         text_chunk: str,
         *,
         source_name: str,
+        existing_context: str = "",
         options: GenerateOptions | None = None,
     ) -> list[WikiPage]:
         opts = options or GenerateOptions(temperature=0.1, max_tokens=4096)
@@ -127,7 +135,9 @@ class ClaudeProvider(LLMProvider):
                 system=_EXTRACT_SYSTEM_PROMPT,
                 messages=[{
                     "role": "user",
-                    "content": _user_prompt_for_extraction(text_chunk, source_name),
+                    "content": _user_prompt_for_extraction(
+                        text_chunk, source_name, existing_context
+                    ),
                 }],
             )
         except Exception as exc:  # noqa: BLE001

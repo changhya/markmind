@@ -1,38 +1,72 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, MessageSquare, FileText, Cpu, BookOpen } from 'lucide-react';
-import { getBackendURL } from '../api/client';
+import { Send, Loader2, MessageSquare, FileText, Cpu, BookOpen, BookMarked, Check } from 'lucide-react';
+import { getBackendURL, wikiFromAnswer } from '../api/client';
 import type { ChatMessage } from '../types';
 
 const MODELS = ['llama3', 'llama3.1', 'mistral', 'gemma2', 'qwen2'];
 
 // ── Message Bubble ────────────────────────────────────────────────────────────
 
-function MessageBubble({ msg }: { msg: ChatMessage & { streaming?: boolean } }) {
+function MessageBubble({
+  msg, onSaveToWiki,
+}: {
+  msg: ChatMessage & { streaming?: boolean };
+  userQuery?: string;
+  onSaveToWiki?: (content: string, sources: { title: string; source: string }[]) => void;
+}) {
   const isUser = msg.role === 'user';
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = async () => {
+    if (!onSaveToWiki) return;
+    onSaveToWiki(msg.content, msg.sources ?? []);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
   return (
-    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
-      <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${
+    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'items-start'}`}>
+      <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5 ${
         isUser ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
       }`}>{isUser ? 'U' : 'AI'}</div>
 
-      <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-        isUser
-          ? 'bg-indigo-600 text-white rounded-tr-sm'
-          : 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-sm border border-slate-300 dark:border-slate-700'
-      }`}>
-        <span className="whitespace-pre-wrap">{msg.content}</span>
-        {(msg as any).streaming && (
-          <span className="inline-block w-2 h-4 bg-indigo-400 ml-0.5 animate-pulse rounded-sm" />
-        )}
+      <div className="flex flex-col gap-1 max-w-[80%]">
+        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+          isUser
+            ? 'bg-indigo-600 text-white rounded-tr-sm'
+            : 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-sm border border-slate-300 dark:border-slate-700'
+        }`}>
+          <span className="whitespace-pre-wrap">{msg.content}</span>
+          {(msg as any).streaming && (
+            <span className="inline-block w-2 h-4 bg-indigo-400 ml-0.5 animate-pulse rounded-sm" />
+          )}
 
-        {!isUser && msg.sources && msg.sources.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-slate-300 dark:border-slate-700">
-            {msg.sources.map((s, i) => (
-              <span key={i} className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full flex items-center gap-1">
-                <FileText className="w-2.5 h-2.5" />{s.title || s.source}
-              </span>
-            ))}
-          </div>
+          {!isUser && msg.sources && msg.sources.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-slate-300 dark:border-slate-700">
+              {msg.sources.map((s, i) => (
+                <span key={i} className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <FileText className="w-2.5 h-2.5" />{s.title || s.source}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Wiki 저장 버튼 (AI 메시지에만, 스트리밍 완료 후) */}
+        {!isUser && !(msg as any).streaming && msg.content && onSaveToWiki && (
+          <button
+            onClick={handleSave}
+            className={`self-start flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+              saved
+                ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-800'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-400'
+            }`}
+          >
+            {saved
+              ? <><Check className="w-3 h-3" /> Wiki에 저장됨</>
+              : <><BookMarked className="w-3 h-3" /> Wiki에 저장</>
+            }
+          </button>
         )}
       </div>
     </div>
@@ -68,9 +102,21 @@ export default function ChatPage() {
   const [messages, setMessages]         = useState<ExtendedMsg[]>([]);
   const [input, setInput]               = useState('');
   const [loading, setLoading]           = useState(false);
-  const [model, setModel]               = useState(() => localStorage.getItem('markmind_default_model') ?? 'llama3');
+  const [model, setModel]               = useState(() => localStorage.getItem('markmind_default_model') ?? 'llama3.2:1b');
   const [currentRefs, setCurrentRefs]   = useState<{ title: string; source: string; snippet: string }[]>([]);
+  // 마지막 user 쿼리 (Wiki 저장 시 제목으로 사용)
+  const lastQueryRef                    = useRef<string>('');
   const bottomRef                        = useRef<HTMLDivElement>(null);
+
+  const saveToWiki = async (
+    content: string,
+    sources: { title: string; source: string }[],
+  ) => {
+    const title = lastQueryRef.current || content.slice(0, 60);
+    try {
+      await wikiFromAnswer({ title, content, sources, tags: ['Chat Answer'] });
+    } catch {}
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -81,6 +127,7 @@ export default function ChatPage() {
     const query = input.trim();
     setInput('');
     setMessages((prev) => [...prev, { role: 'user', content: query }]);
+    lastQueryRef.current = query;
     setLoading(true);
 
     // Add empty streaming assistant message
@@ -177,7 +224,14 @@ export default function ChatPage() {
               </div>
             </div>
           )}
-          {messages.map((msg, i) => <MessageBubble key={i} msg={msg} />)}
+          {messages.map((msg, i) => (
+            <MessageBubble
+              key={i}
+              msg={msg}
+              userQuery={lastQueryRef.current}
+              onSaveToWiki={msg.role === 'assistant' ? saveToWiki : undefined}
+            />
+          ))}
           <div ref={bottomRef} />
         </div>
 

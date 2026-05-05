@@ -42,6 +42,7 @@ def extract_wiki_pages(
     text_chunk: str,
     source_name: str,
     model_name: str = "llama3",
+    existing_context: str = "",
 ) -> list[dict[str, Any]]:
     """Deprecated: use ``markmind.llm.get_provider(...).extract_wiki_pages(...)``."""
     warnings.warn(
@@ -52,7 +53,9 @@ def extract_wiki_pages(
     )
     try:
         provider = get_provider(_LEGACY_PROVIDER, model=model_name)
-        pages = provider.extract_wiki_pages(text_chunk, source_name=source_name)
+        pages = provider.extract_wiki_pages(
+            text_chunk, source_name=source_name, existing_context=existing_context
+        )
         return [p.model_dump() for p in pages]
     except (ProviderUnavailableError, ParseError) as exc:
         print(f"[LLM] Extraction error: {exc}", flush=True)

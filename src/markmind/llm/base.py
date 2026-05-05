@@ -39,6 +39,7 @@ class LLMProvider(ABC):
         text_chunk: str,
         *,
         source_name: str,
+        existing_context: str = "",
         options: GenerateOptions | None = None,
     ) -> list[WikiPage]: ...
 

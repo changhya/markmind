@@ -29,6 +29,10 @@ export const refineWikiPage   = (id: str, context?: string) =>
 export const mergeWikiPages   = (source_ids: str[], keep_id?: str) =>
   api.post('/api/wiki/merge', { source_ids, keep_id });
 export const getDuplicates    = ()                   => api.get('/api/wiki/duplicates');
+export const wikiFromAnswer   = (data: {
+  title: string; content: string; summary?: string;
+  tags?: string[]; sources?: { title: string; source: string }[];
+}) => api.post('/api/wiki/from-answer', data);
 
 export const chat            = (query: string, model: string) => api.post('/api/chat', { query, model });
 export const getChatHistory  = (limit = 50)         => api.get(`/api/chat/history?limit=${limit}`);

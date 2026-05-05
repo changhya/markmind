@@ -54,12 +54,19 @@ def _normalize_to_list(payload: Any) -> list[dict]:
         raise ParseError("JSON list contains non-object entries.")
 
     if isinstance(payload, dict):
-        for key in ("pages", "wiki_pages", "items", "data", "results"):
+        # 1. 알려진 래퍼 키 먼저 시도
+        for key in ("pages", "wiki_pages", "items", "data", "results", "entities",
+                    "topics", "concepts", "entries", "output"):
             inner = payload.get(key)
             if isinstance(inner, list):
                 return _normalize_to_list(inner)
+        # 2. 단일 페이지 객체인 경우
         if any(k in payload for k in ("title", "content")):
             return [payload]
+        # 3. 폴백: 어떤 키든 dict 리스트를 값으로 가지면 사용
+        for val in payload.values():
+            if isinstance(val, list) and val and all(isinstance(x, dict) for x in val):
+                return val
         raise ParseError(
             f"JSON object lacks expected keys; got keys={list(payload)[:5]}."
         )

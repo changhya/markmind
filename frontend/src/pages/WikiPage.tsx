@@ -82,48 +82,123 @@ function TreeItem({
 // ── React Flow Node ───────────────────────────────────────────────────────────
 
 function WikiNode({ data }: NodeProps) {
-  const d = data as { title: string; tags: string[]; isDuplicate: boolean };
+  const d = data as { title: string; tags: string[]; docColor: string; isDuplicate: boolean; selected: boolean };
   return (
-    <div className={`px-3 py-2 rounded-xl border shadow-lg min-w-[160px] max-w-[200px] ${
-      d.isDuplicate ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-500 dark:border-amber-600' : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600'
+    <div className={`relative px-3 py-2.5 rounded-xl border-2 shadow-lg w-48 transition-all ${
+      d.selected
+        ? 'border-indigo-400 bg-indigo-950/80 shadow-indigo-900/50 shadow-xl'
+        : d.isDuplicate
+        ? 'border-amber-500 bg-amber-950/60'
+        : 'border-slate-600 bg-slate-800 hover:border-slate-400'
     }`}>
-      <Handle type="target" position={Position.Left}  className="!bg-indigo-500 !border-indigo-300 dark:border-indigo-700" />
-      {d.isDuplicate && <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400 absolute -top-1.5 -right-1.5" />}
-      <p className="text-xs font-semibold text-slate-900 dark:text-white leading-snug truncate">{d.title}</p>
-      <div className="flex flex-wrap gap-1 mt-1">
-        {(d.tags ?? []).slice(0, 2).map((t: string) => (
-          <span key={t} className="text-[9px] bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded-full">{t}</span>
+      <Handle type="target" position={Position.Left}  className="!w-2.5 !h-2.5 !bg-slate-500 !border-slate-400" />
+      <Handle type="source" position={Position.Right} className="!w-2.5 !h-2.5 !bg-slate-500 !border-slate-400" />
+
+      {/* 문서 출처 색 인디케이터 */}
+      <div className="absolute top-2 right-2 flex items-center gap-1">
+        {d.isDuplicate && <AlertTriangle className="w-3 h-3 text-amber-400" />}
+        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.docColor }} />
+      </div>
+
+      <p className="text-xs font-semibold text-white leading-snug pr-5" style={{ wordBreak: 'break-word' }}>
+        {d.title}
+      </p>
+      <div className="flex flex-wrap gap-1 mt-1.5">
+        {(d.tags ?? []).slice(0, 3).map((t: string) => (
+          <span key={t} className="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded-full leading-none">
+            {t}
+          </span>
         ))}
       </div>
-      <Handle type="source" position={Position.Right} className="!bg-indigo-500 !border-indigo-300 dark:border-indigo-700" />
     </div>
   );
 }
 const NODE_TYPES = { wiki: WikiNode };
 
+// ── Graph Layout ──────────────────────────────────────────────────────────────
+
+/** 원형 배치 (소규모) or 격자 배치 (대규모) */
+function calcPosition(i: number, total: number): { x: number; y: number } {
+  if (total <= 16) {
+    const angle  = (i / total) * 2 * Math.PI - Math.PI / 2;
+    const radius = Math.max(220, total * 35);
+    return { x: Math.cos(angle) * radius + 450, y: Math.sin(angle) * radius + 300 };
+  }
+  const COLS = Math.ceil(Math.sqrt(total));
+  return { x: (i % COLS) * 270, y: Math.floor(i / COLS) * 170 };
+}
+
+/** 문서 ID → 고유 색상 */
+const DOC_COLORS = [
+  '#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6',
+  '#06b6d4','#ec4899','#84cc16','#f97316','#14b8a6',
+];
+const docColorMap = new Map<string, string>();
+let colorIdx = 0;
+function getDocColor(docId: string | null): string {
+  if (!docId) return '#64748b';
+  if (!docColorMap.has(docId)) docColorMap.set(docId, DOC_COLORS[colorIdx++ % DOC_COLORS.length]);
+  return docColorMap.get(docId)!;
+}
+
 // ── Graph Builder ─────────────────────────────────────────────────────────────
 
 function buildGraph(pages: WikiPage[], selectedId: string | null, duplicateIds: Set<string>) {
-  const COLS = 4;
   const nodes: Node[] = pages.map((p, i) => ({
     id: p.id,
     type: 'wiki' as const,
-    position: { x: (i % COLS) * 250, y: Math.floor(i / COLS) * 150 },
-    data: { title: p.title, tags: p.tags, selected: p.id === selectedId, isDuplicate: duplicateIds.has(p.id) },
+    position: calcPosition(i, pages.length),
+    data: {
+      title: p.title,
+      tags: p.tags,
+      docColor: getDocColor(p.document_id),
+      selected: p.id === selectedId,
+      isDuplicate: duplicateIds.has(p.id),
+    },
   }));
 
   const edges: Edge[] = [];
+  const addedPairs = new Set<string>();
+
+  // 1. 태그 기반 엣지 (대소문자 무관 / 부분 일치)
   for (let i = 0; i < pages.length; i++) {
     for (let j = i + 1; j < pages.length; j++) {
-      if (pages[i].tags.some((t) => pages[j].tags.includes(t))) {
+      const tagsA = pages[i].tags.map(t => t.toLowerCase());
+      const tagsB = pages[j].tags.map(t => t.toLowerCase());
+      const shared = tagsA.filter(a => tagsB.some(b => b.includes(a) || a.includes(b)));
+      if (shared.length > 0) {
+        const pairKey = `${pages[i].id}-${pages[j].id}`;
+        addedPairs.add(pairKey);
         edges.push({
-          id: `e-${pages[i].id}-${pages[j].id}`,
-          source: pages[i].id, target: pages[j].id,
-          style: { stroke: '#4f46e5', strokeWidth: 1.5, opacity: 0.5 },
+          id: `tag-${pairKey}`,
+          source: pages[i].id,
+          target: pages[j].id,
+          label: shared[0],
+          labelStyle: { fill: '#a5b4fc', fontSize: 9 },
+          labelBgStyle: { fill: '#1e1b4b', fillOpacity: 0.85 },
+          type: 'smoothstep',
+          style: { stroke: '#6366f1', strokeWidth: 2, opacity: 0.8 },
         });
       }
     }
   }
+
+  // 2. 같은 문서 출처 엣지 (점선) — 태그 엣지 없는 쌍에만
+  for (let i = 0; i < pages.length; i++) {
+    for (let j = i + 1; j < pages.length; j++) {
+      if (!pages[i].document_id || pages[i].document_id !== pages[j].document_id) continue;
+      const pairKey = `${pages[i].id}-${pages[j].id}`;
+      if (addedPairs.has(pairKey)) continue;
+      edges.push({
+        id: `doc-${pairKey}`,
+        source: pages[i].id,
+        target: pages[j].id,
+        type: 'smoothstep',
+        style: { stroke: '#475569', strokeWidth: 1.5, strokeDasharray: '5 4', opacity: 0.6 },
+      });
+    }
+  }
+
   return { nodes, edges };
 }
 
@@ -460,25 +535,56 @@ export default function WikiPage() {
         </div>
       ) : (
         /* ── Graph ── */
-        <div className="flex-1 bg-slate-50 dark:bg-slate-950">
+        <div className="flex-1 relative bg-slate-950 overflow-hidden">
           {flatPages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center gap-3">
-              <Network className="w-12 h-12 text-slate-300 dark:text-slate-800" />
-              <p className="text-slate-500 dark:text-slate-500 text-sm">위키 페이지가 없습니다.</p>
+              <Network className="w-12 h-12 text-slate-800" />
+              <p className="text-slate-500 text-sm">위키 페이지가 없습니다.</p>
             </div>
           ) : (
-            <ReactFlow
-              nodes={nodes} edges={edges}
-              onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
-              nodeTypes={NODE_TYPES}
-              onNodeClick={(_, node) => { setTab('wiki'); selectPage(node.id); }}
-              fitView proOptions={{ hideAttribution: true }}
-            >
-              <Background color="#334155" gap={24} size={1} />
-              <Controls className="!bg-slate-50 dark:bg-slate-800 !border-slate-300 dark:border-slate-700 !shadow-none" />
-              <MiniMap nodeColor={(n) => (n.data as any).isDuplicate ? '#d97706' : '#4f46e5'}
-                maskColor="rgba(2,6,23,0.7)" className="!bg-white dark:bg-slate-900 !border-slate-300 dark:border-slate-700" />
-            </ReactFlow>
+            <>
+              <ReactFlow
+                nodes={nodes} edges={edges}
+                onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
+                nodeTypes={NODE_TYPES}
+                onNodeClick={(_, node) => { setTab('wiki'); selectPage(node.id); }}
+                fitView
+                fitViewOptions={{ padding: 0.3 }}
+                proOptions={{ hideAttribution: true }}
+              >
+                <Background color="#1e293b" gap={28} size={1} />
+                <Controls className="!bg-slate-800 !border-slate-700 !shadow-none" />
+                <MiniMap
+                  nodeColor={(n) => (n.data as any).isDuplicate ? '#d97706' : (n.data as any).docColor ?? '#6366f1'}
+                  maskColor="rgba(2,6,23,0.75)"
+                  className="!bg-slate-900 !border-slate-700"
+                />
+              </ReactFlow>
+
+              {/* Legend */}
+              <div className="absolute bottom-4 left-4 bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-3 text-xs space-y-1.5 backdrop-blur-sm">
+                <p className="text-slate-400 font-medium mb-2">범례</p>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <div className="w-8 border-t-2 border-indigo-500" />
+                  태그 연결 (주제 관계)
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <div className="w-8 border-t-2 border-slate-500 border-dashed" />
+                  같은 문서 출처
+                </div>
+                <div className="flex items-center gap-2 text-slate-400 pt-1 border-t border-slate-800">
+                  <span>노드</span>
+                  <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                  색상 = 출처 문서
+                </div>
+                <p className="text-slate-500 pt-0.5">노드 클릭 → Wiki View로 이동</p>
+              </div>
+
+              {/* Stats */}
+              <div className="absolute top-4 right-4 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-400 backdrop-blur-sm">
+                {flatPages.length}개 페이지 · {edges.length}개 연결
+              </div>
+            </>
           )}
         </div>
       )}
